@@ -136,22 +136,21 @@ class Form
 
 class Database
 {
-    private $sql_hostname = "127.0.0.1";
-    private $sql_user = "web_user";
-    private $sql_passwd = "9flZGpeD5cZm1XvI";
-    private $sql_database = "uebungsaufgaben";
-
     private $sql_connection;
-
     private $error = "";
 
     function __construct()
     {
+        $sql_hostname = "127.0.0.1";
+        $sql_user = "web_user";
+        $sql_passwd = "9flZGpeD5cZm1XvI";
+        $sql_database = "uebungsaufgaben";
+
         $this->sql_connection = new mysqli(
-            $this->sql_hostname,
-            $this->sql_user,
-            $this->sql_passwd,
-            $this->sql_database
+            $sql_hostname,
+            $sql_user,
+            $sql_passwd,
+            $sql_database
         );
 
         if ($this->sql_connection->connect_error) {
