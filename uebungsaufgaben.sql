@@ -21,6 +21,8 @@ SET time_zone = "+00:00";
 -- Datenbank: `uebungsaufgaben`
 --
 
+CREATE DATABASE `uebungsaufgaben`;
+
 -- --------------------------------------------------------
 
 --
