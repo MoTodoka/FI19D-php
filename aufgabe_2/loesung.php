@@ -139,7 +139,7 @@ class Database
     private $sql_hostname = "127.0.0.1";
     private $sql_user = "web_user";
     private $sql_passwd = "9flZGpeD5cZm1XvI";
-    private $sql_database = "database_test";
+    private $sql_database = "uebungsaufgaben";
 
     private $sql_connection;
 
@@ -171,7 +171,7 @@ class Database
 
     function select_all()
     {
-        $query = $this->sql_connection->prepare("SELECT * FROM table_test");
+        $query = $this->sql_connection->prepare("SELECT * FROM aufgabe_2");
         $query->execute();
         $result = $query->get_result();
         return $result->fetch_all();
@@ -179,7 +179,7 @@ class Database
 
     function select_by_uid($uid)
     {
-        $query = $this->sql_connection->prepare("SELECT * FROM table_test WHERE uid = ?;");
+        $query = $this->sql_connection->prepare("SELECT * FROM aufgabe_2 WHERE uid = ?;");
         $query->bind_param("i", $uid);
         $query->execute();
         $result = $query->get_result();
@@ -188,7 +188,7 @@ class Database
 
     function delete_by_uid($uid)
     {
-        $query = $this->sql_connection->prepare("DELETE FROM table_test WHERE uid = ?;");
+        $query = $this->sql_connection->prepare("DELETE FROM aufgabe_2 WHERE uid = ?;");
         $query->bind_param("i", $uid);
         $result = $query->execute();
         if (!$result) {
@@ -203,7 +203,7 @@ class Database
 
     function insert($name, $number)
     {
-        $query = $this->sql_connection->prepare("INSERT INTO table_test (name, number) VALUE (?, ?);");
+        $query = $this->sql_connection->prepare("INSERT INTO aufgabe_2 (name, number) VALUE (?, ?);");
         $query->bind_param("si", $name, $number);
         $result = $query->execute();
         if (!$result) {
@@ -220,7 +220,7 @@ class Database
     {
         $result = false;
         if ($this->select_by_uid($uid)) {
-            $query = $this->sql_connection->prepare("UPDATE table_test SET name = ?, number = ? WHERE uid = ?;");
+            $query = $this->sql_connection->prepare("UPDATE aufgabe_2 SET name = ?, number = ? WHERE uid = ?;");
             $query->bind_param("sii", $name, $number, $uid);
             $result = $query->execute();
             if (!$result) {
