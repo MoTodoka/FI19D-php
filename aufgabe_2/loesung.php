@@ -25,7 +25,6 @@ function print_table($data_array, $header)
 
 class Form
 {
-    private $post = null;
     private $form_uid = "";
     private $form_name = "";
     private $form_number = "";
@@ -34,60 +33,68 @@ class Form
     function __construct($post)
     {
         if ($post) {
-            $this->post = $post;
             $this->form_uid = $post["uid"];
             $this->form_name = $post["name"];
             $this->form_number = $post["number"];
-            $this->execute();
+            $this->execute($post);
         }
     }
 
-    function get_form_uid(){
+    function get_form_uid()
+    {
         return $this->form_uid;
     }
 
-    function get_form_name(){
+    function get_form_name()
+    {
         return $this->form_name;
     }
 
-    function get_form_number(){
+    function get_form_number()
+    {
         return $this->form_number;
     }
 
-    function get_form_notification(){
+    function get_form_notification()
+    {
         return $this->form_notification;
     }
 
-    function has_post()
+    function execute($post)
     {
-        return $this->post != null;
-    }
-
-    function execute()
-    {
-        if ($this->post == null) {
-            return;
-        } else if (isset($this->post["insert"])) {
+        $database = new Database();
+        if (isset($post["insert"])) {
             if ($this->is_insertable()) {
-                (new Database)->insert($this->post["name"], $this->post["number"]);
+                if (!$database->insert($post["name"], $post["number"])) {
+                    $this->form_notification = $database->get_error();
+                }
             } else {
                 $this->form_notification = "Zum Einfügen müssen alle Informationen außer der UID angegeben werden!";
             }
-        } else if (isset($this->post["delete"])) {
+        } else if (isset($post["delete"])) {
             if ($this->is_deletable()) {
-                (new Database)->delete_by_uid($this->post["uid"]);
+                if (!$database->delete_by_uid($post["uid"])) {
+                    $this->form_notification = $database->get_error();
+                }
             } else {
                 $this->form_notification = "Zum Löschen bitte eine UID angeben!";
             }
-        } else if (isset($this->post["update"])) {
+        } else if (isset($post["update"])) {
             if ($this->is_updatable()) {
-                (new Database)->update($this->post["uid"], $this->post["name"], $this->post["number"]);
+                if (!$database->update($post["uid"], $post["name"], $post["number"])) {
+                    $this->form_notification = $database->get_error();
+                }
             } else {
                 $this->form_notification = "Für das Update bitte alle Felder füllen!";
             }
-        } else if (isset($this->post["read"])) {
+        } else if (isset($post["read"])) {
             if ($this->is_readable()) {
-                $this->set_form_values((new Database)->select_by_uid($this->post["uid"]));
+                $result = $database->select_by_uid($post["uid"]);
+                if ($result) {
+                    $this->set_form_values($result);
+                } else {
+                    $this->form_notification = sprintf("Datensatz %s nicht gefunden!", $post["uid"]);
+                }
             } else {
                 $this->form_notification = "Zum Lesen bitte eine UID angeben!";
             }
@@ -109,7 +116,6 @@ class Form
     function is_insertable()
     {
         return
-            $this->form_uid == "" &&
             $this->form_name != "" &&
             $this->form_number != "";
     }
@@ -137,9 +143,11 @@ class Database
 
     private $sql_connection;
 
+    private $error = "";
+
     function __construct()
     {
-        $this->sql_connection =  new mysqli(
+        $this->sql_connection = new mysqli(
             $this->sql_hostname,
             $this->sql_user,
             $this->sql_passwd,
@@ -149,6 +157,11 @@ class Database
         if ($this->sql_connection->connect_error) {
             die("Connection failed: " . $this->sql_connection->connect_error);
         }
+    }
+
+    function get_error()
+    {
+        return $this->error;
     }
 
     function __destruct()
@@ -161,8 +174,7 @@ class Database
         $query = $this->sql_connection->prepare("SELECT * FROM table_test");
         $query->execute();
         $result = $query->get_result();
-        $data_array = $result->fetch_all();
-        return $data_array;
+        return $result->fetch_all();
     }
 
     function select_by_uid($uid)
@@ -171,31 +183,55 @@ class Database
         $query->bind_param("i", $uid);
         $query->execute();
         $result = $query->get_result();
-        $data_array = $result->fetch_all();
-        return $data_array;
+        return $result->fetch_all();
     }
 
     function delete_by_uid($uid)
     {
         $query = $this->sql_connection->prepare("DELETE FROM table_test WHERE uid = ?;");
         $query->bind_param("i", $uid);
-        $query->execute();
+        $result = $query->execute();
+        if (!$result) {
+            $this->error = $query->error;
+        }
+        if (!$query->affected_rows) {
+            $this->error = "Keine Zeile zum Löschen gefunden!";
+            $result = false;
+        }
+        return $result;
     }
 
     function insert($name, $number)
     {
         $query = $this->sql_connection->prepare("INSERT INTO table_test (name, number) VALUE (?, ?);");
         $query->bind_param("si", $name, $number);
-        $query->execute();
+        $result = $query->execute();
+        if (!$result) {
+            $this->error = $query->error;
+        }
+        if (!$query->affected_rows) {
+            $this->error = "Keine Zeile zum Löschen gefunden!";
+            $result = false;
+        }
+        return $result;
     }
 
     function update($uid, $name, $number)
     {
+        $result = false;
         if ($this->select_by_uid($uid)) {
             $query = $this->sql_connection->prepare("UPDATE table_test SET name = ?, number = ? WHERE uid = ?;");
             $query->bind_param("sii", $name, $number, $uid);
-            $query->execute();
+            $result = $query->execute();
+            if (!$result) {
+                $this->error = $query->error;
+            }
+            if (!$query->affected_rows) {
+                $this->error = "Keine Zeile zum Updaten gefunden!";
+                $result = false;
+            }
         }
+        return $result;
     }
 }
 
@@ -209,26 +245,26 @@ class Database
 </head>
 
 <body>
-    <H1><?php echo $title; ?></H1>
-    <H2>Test Data</H2>
-    <?php echo print_table((new Database)->select_all(), ["UID", "Name", "Nummer"]); ?>
-    <H2>Formuar</H2>
-    <form method="post">
-        <label>
-            UID: <input type="number" name="uid" value="<?php echo $form->get_form_uid(); ?>">
-        </label>
-        <label>
-            Name: <input type="text" name="name" value="<?php echo $form->get_form_name(); ?>">
-        </label>
-        <label>
-            Nummer: <input type="number" name="number" value="<?php echo $form->get_form_number(); ?>">
-        </label>
-        <input type="submit" value="Lesen" name="read">
-        <input type="submit" value="Hinzufügen" name="insert">
-        <input type="submit" value="Ändern" name="update">
-        <input type="submit" value="Löschen" name="delete">
-    </form>
-    <H4><?php echo $form->get_form_notification(); ?></H4>
+<H1><?php echo $title; ?></H1>
+<H2>Test Data</H2>
+<?php echo print_table((new Database)->select_all(), ["UID", "Name", "Nummer"]); ?>
+<H2>Formular</H2>
+<form method="post">
+    <label>
+        UID: <input type="number" name="uid" value="<?php echo $form->get_form_uid(); ?>">
+    </label>
+    <label>
+        Name: <input type="text" name="name" value="<?php echo $form->get_form_name(); ?>">
+    </label>
+    <label>
+        Nummer: <input type="number" name="number" value="<?php echo $form->get_form_number(); ?>">
+    </label>
+    <input type="submit" value="Lesen" name="read">
+    <input type="submit" value="Hinzufügen" name="insert">
+    <input type="submit" value="Ändern" name="update">
+    <input type="submit" value="Löschen" name="delete">
+</form>
+<H4><?php echo $form->get_form_notification(); ?></H4>
 </body>
 
 </html>
